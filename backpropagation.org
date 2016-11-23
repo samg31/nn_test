@@ -20,4 +20,133 @@ sigmoid(x) - sigmoid^2(x)
 d
 -- (sigmoid(x)) = *sigmoid(x)( 1 - sigmoid(x) )*
 dx
-* 
+* neurons
+simple neuron diagram:
+
+input ---weight-->(sigmoid)---->output.
+or output = sigmoid(input*weight)
+** threshold
+a bias term to only accept inputs past a certain threshold of correctness
+output = sigmoid(input*weight + threshold)
+** several inputs
+most neural networks have more than one input
+
+in1 --weight1-->{
+in2 --weight2-->{ sigmoid(sum) ----> output
+in3 --weight3-->{
+
+output = sigmoid(in1*weight1, in2*weight2, in3*weight3 + threshold)
+* network of neurons
+a neural network is a fully-connected graph of neurons.
+
+where O is the transfer function
+
+in1---->O---->{ \\ 
+   \   /      { \\
+    \ /       { \\ 
+     /        {output \\
+    / \       { \\
+in2---->O---->{ \\
+^       ^      ^ \\
+I       J      K \\
+* notation glossary
+x_{j}^{l}: input to node j of layer l
+W_{ij}^{l}: weight from layer l - 1 noide i to layer l node j
+s(x) = 1/(1+e^(-x))
+h_{j}^{l}: bias of node j of layer l
+O_{j}^{l}: output of node j in layer l
+t_{j}: target value of node j of the output layer
+* error
+E = (1/2)Sum(k in K){O_{k} - t_{k})^2
+
+we want to calculate the partial derivative of the error with respect to W_{jk} to find the rate of change (gradient vector) of the error.
+This creates two cases:
+** case 1: the node is an output node
+  dE                       d
+------  = (O_{k} - t_{k})-------O_{k} =
+dW_{jk}                  dW_{jk}
+
+                                        d
+(O_{k} - t_{k})s(x_{k})(1 - s(x_{k}))-------x_{k} =
+                                     dW_{jk}
+
+(O_{k} - t_{k})O_{k}(1 - O_{k})O_{j}
+
+Δ_{k} = O_{k}(1 - O_{k})(O_{k} - t_{k})
+
+the derivative of the error with respect to W_{jk} =
+*O_{j}*Δ_{k}*
+** case 2: the node is a hidden layer node
+derivative of error with respect to W_{ij}
+
+  dE       d
+------- = -------(1/2)SUM(k in K){( O_{k} - t_{k})^2} =
+dW_{ij}   dW_{ij}
+
+                              d
+SUM(k in K){(O_{k} - t_{k})-------O_{k} = 
+                           dW_{ij}
+
+(note that O_{k} = s(x_{k})
+
+                                                 dx_{k}
+SUM(k in K){(O_{k} - t_{k})s(x_{k})(1 - s(x_{k})------- = 
+                                                dW_{ij}
+
+                                                 dx_{k}
+SUM(k in K){(O_{k} - t_{k})s(x_{k})(1 - s(x_{k})------- = 
+                                                dW_{ij}
+
+                                                 dx_{k} dO_{j}
+SUM(k in K){(O_{k} - t_{k})s(x_{k})(1 - s(x_{k})-------*------- = 
+                                                dO_{j}  dW_{ij}
+
+                                                       dO_{j}
+SUM(k in K){(O_{k} - t_{k})s(x_{k})(1 - s(x_{k})W_{jk}------- = 
+                                                       dW_{ij}
+
+dO_{j}                                                       
+-------SUM(k in K){(O_{k} - t_{k})s(x_{k})(1 - s(x_{k})W_{jk} = 
+dW_{ij}
+
+             
+O_{j}(1-O_{J}O_{i}SUM(k in K){(O_{k} - t_{k})s(x_{k})(1 - s(x_{k})W_{jk} = 
+
+the derivative = *O_{i}O_{j}(1 - O_{j}SUM(k in K){Δ_{k}W_{jk}}*
+
+everything except the i term can be Δ_{j}, so we have
+
+dE
+------- = *O_{i}Δ_{j}*
+dW_{ij}
+** how weights affect errors
+
+dE        
+------- = O_{j}Δ_{k}
+dW_{jk}
+
+where Δ_{k} = O_{k}(1 - O_{k})(O_{k} - t_{k})
+so j's output times the transfer function times the error.
+
+for the hidden layer:
+dE        
+------- = O_{i}Δ_{j}
+dW_{jk}
+
+so the output of i times the transfer function times the sum of 
+Δ_{k}*weights
+* the backpropagation algorithm
+ - run the network forward with input data to get the network input
+ - for each output, compute Δ_{k}
+ - for each hidden node, compute Δ_{j}
+ - update the weights and biases as follows:
+   Given
+       ΔW = -c*Δ_{l}*O_{l-1}
+       Δh = c*Δ_{l}
+   apply
+       W = W + ΔW
+       h = h + Δh
+
+c is a small constant (0.1, 0.2, etc.) to help scale down the delta. 
+c is negative since the gradient vector points in direction of steepest ascent but we want to descend to find minima.
+
