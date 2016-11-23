@@ -150,3 +150,4 @@ so the output of i times the transfer function times the sum of
 c is a small constant (0.1, 0.2, etc.) to help scale down the delta. 
 c is negative since the gradient vector points in direction of steepest ascent but we want to descend to find minima.
 
+
