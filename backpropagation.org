@@ -1,0 +1,23 @@
+* transfer function: sigmoid
+sigmoid(x) = 1 / (1 + exp(-x))
+
+d/dx(sigmoid(x) = e^-x / (1 + e^-x)^2
+
+(1 + e^-x)          1
+----------   -  ----------
+(1 + e^-x)^2   (1 + e^-x)^2
+
+    1             1
+----------   -  ----------
+(1 + e^-x)      (1 + e^-x)^2
+
+(1 + e^-x)     {     1      }^2
+----------   - { ---------- }
+(1 + e^-x)^2   { (1 + e^-x) }
+
+sigmoid(x) - sigmoid^2(x)
+
+d
+-- (sigmoid(x)) = *sigmoid(x)( 1 - sigmoid(x) )*
+dx
+* 
