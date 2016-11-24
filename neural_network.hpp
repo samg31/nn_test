@@ -1,6 +1,7 @@
 #include <vector>
 #include <iostream>
 #include <random>
+#include <cmath>
 
 class NeuralNetwork{
 
@@ -61,11 +62,48 @@ public:
   }
 
   double
-  HyperTan(double x)
+  hyper_tan(double x)
   {
       if (x < -20.0) return -1.0; // approximation is correct to 30 decimals
       else if (x > 20.0) return 1.0;
-      else return Math.Tanh(x);
+      else return std::tanh(x);
   }
+
+ std::vector<double>
+ soft_max(std::vector<double> out_sum)
+ {
+   double max = out_sums[0];
+
+   for(int i = 0; i < out_sums.size(); ++i)
+     if(out_sums[i] > max) max = out_sums[i];
+
+   double scale = 0;
+   for(i = 0; i < out_sums.size(); ++i)
+     scale += std::exp(out_sums[i] - max);
+
+   std::vector<double> result(out_sums.size());
+   for(i = 0; i < out_sums.size(); ++i)
+     result[i] = std::exp(out_sums[i] - max) / scale;
+
+   return result;
+ } 
+
+  int
+  max_value_idx(std::vector<double> v)
+  {
+    int maxIdx = 0;
+    double max = v[0];
+
+    for(int i = 0; i < v.size(); ++i)
+      if(v[i] > max)
+       { 
+         max = v[i];
+         maxIdx = i;
+       }
+
+    return max;
+  }
+
+
 
 };
