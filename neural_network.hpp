@@ -2,6 +2,7 @@
 #include <iostream>
 #include <random>
 #include <cmath>
+#include <cassert>
 
 class NeuralNetwork{
 
@@ -61,6 +62,31 @@ public:
       return result;
   }
 
+  void
+  copy_weights(std::vector<double> new_values)
+  {
+    int num_weights = (numInput * numHidden) + (numHidden * numOutput) + numHidden + numOutput;
+    assert(num_weights == new_values.size());
+    std::vector<double> result(numWeights);
+    int k = 0;
+
+      for (int i = 0; i < input_hidden_weights.Length; ++i)
+        for (int j = 0; j < input_hidden_weights[0].Length; ++j, ++k)
+          result[k] = input_hidden_weights[i][j];
+
+      for (int i = 0; i < hidden_biases.Length; ++i, ++k)
+        result[k] = hidden_biases[i];
+
+      for (int i = 0; i < hidden_output_weights.Length; ++i)
+        for (int j = 0; j < hidden_output_weights[0].Length; ++j, ++k)
+          result[k] = hidden_output_weights[i][j];
+
+      for (int i = 0; i < output_biases.Length; ++i, ++k)
+        result[k] = output_biases[i];
+
+      return result;
+  }
+
   double
   hyper_tan(double x)
   {
@@ -104,6 +130,83 @@ public:
     return max;
   }
 
+  std::vector<double>
+  compute_values(std::vector<double> in_vals) 
+  {
+    std::vector<double> hid_sums(num_hidden, 0), out_sums(num_output, 0);
 
+    for(int i = 0; i < num_hidden; ++i)
+       for(int j = 0; j < num_inputs; ++j)
+          hid_sums[i] = in_vals[j] * input_hidden_weights[j][i];
+
+    for(i = 0; i < num_hidden; ++i)
+       hid_sums[i] += hidden_biases[i];
+    
+    for(i = 0; i < num_hidden; ++i)
+       hidden_outputs[i] = hyper_tan(hid_sums[i]);
+    
+    for(i = 0; i < num_output; ++i)
+       for(j = 0; j < num_hidden; ++j)
+          out_sums[i] += hidden_outputs[j] * hidden_output_weights[j][i];
+    
+    for(i = 0; i < num_output; ++i)
+       out_sums[i] += output_biases[i];
+    
+    outputs = soft_max(out_sums);
+
+    return outputs;
+      
+  }
+
+  double
+  accuracy(std::vector<std::vector<double>> test_data, std::vector<double> weights)
+  {
+    copy_weights(weights);
+
+    int right = 0;
+    int wrong = 0;
+    std::vector<double> in_vals(num_inputs), tar_vals(num_output), comp_vals;
+
+    for(int i = 0; i < test_data.size(); ++i)
+    {
+      for(int j = 0; j < num_inputs; ++j)
+          in_vals[j] = data[i][j];
+
+      for(j = 0; j < num_output; ++j)
+          target_vals[j] = data[i][j];
+
+      comp_vals = compute_values(in_vals); 
+      int maxIdx = max_value_idx(comp_vals);
+
+      if(tar_vals[maxIdx] == 1)
+        ++right;
+      else
+        ++wrong; 
+    }
+    return (right * 1.0) / (right + wrong);
+  }
+
+  double 
+  sq_mean_err(std::vector<std::vector<double>> data, std::vector<double> weights)
+  {
+     std::vector<double> input_vals(num_inputs), target_vals(num_output);
+     double err = 0;
+
+     for(int i = 0; i < data.size(); ++i)
+     {
+        for(int j = 0; j < num_inputs; ++j)
+          input_vals[j] = data[i][j];
+
+        for(j = 0; j < num_output; ++j)
+          target_vals[j] = data[i][j];
+
+        std::vector<double> new_values = compute_values(input_vals);
+
+        for(i = 0; i < new_values.size(); ++i)
+           err += std::pow((new_values[i] - target_vals[i]), 2);
+     }
+
+     return err / data.size();
+  }
 
 };
