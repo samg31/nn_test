@@ -129,7 +129,7 @@ public:
 				maxIdx = i;
 			}
 
-		return max;
+		return maxIdx;
 	}
 
 	std::vector<double>
