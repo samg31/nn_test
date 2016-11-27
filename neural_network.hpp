@@ -1,3 +1,6 @@
+#ifndef NEURAL_NETWORK_HPP
+#define NEURAL_NETWORK_HPP
+
 #include <vector>
 #include <iostream>
 #include <random>
@@ -454,3 +457,5 @@ public:
 	}
 
 };
+
+#endif
