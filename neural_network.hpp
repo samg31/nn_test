@@ -40,28 +40,40 @@ public:
 
 		for (int j = 0; j < o; ++j)
 			output_biases[i] = unif(re);
+
 	}
 
+    int
+    sign(double x)
+    {
+        if(x > 0)
+            return 1;
+        else if (x < 0)
+            return -1;
+        else
+            return 0;
+    }
+
 	std::vector<double>
-		all_weights()
+        all_weights()
 	{
 		int numWeights = (num_inputs * num_hidden) + (num_hidden * num_output) + num_hidden + num_output;
 		std::vector<double> result(numWeights);
 		int k = 0;
 
 		for (int i = 0; i < input_hidden_weights.size(); ++i)
-			for (int j = 0; j < input_hidden_weights[0].size(); ++j, ++k)
-				result[k] = input_hidden_weights[i][j];
+            for (int j = 0; j < input_hidden_weights[0].size(); ++j)
+                result[k++] = input_hidden_weights[i][j];
 
-		for (int i = 0; i < hidden_biases.size(); ++i, ++k)
-			result[k] = hidden_biases[i];
+        for (int i = 0; i < hidden_biases.size(); ++i)
+            result[k++] = hidden_biases[i];
 
 		for (int i = 0; i < hidden_output_weights.size(); ++i)
-			for (int j = 0; j < hidden_output_weights[0].size(); ++j, ++k)
-				result[k] = hidden_output_weights[i][j];
+            for (int j = 0; j < hidden_output_weights[0].size(); ++j)
+                result[k++] = hidden_output_weights[i][j];
 
-		for (int i = 0; i < output_biases.size(); ++i, ++k)
-			result[k] = output_biases[i];
+        for (int i = 0; i < output_biases.size(); ++i)
+            result[k++] = output_biases[i];
 
 		return result;
 	}
@@ -94,7 +106,9 @@ public:
 	{
 		if (x < -20.0) return -1.0; // approximation is correct to 30 decimals
 		else if (x > 20.0) return 1.0;
-		else return std::tanh(x);
+        else{
+            return std::tanh(x);
+        }
 	}
 
 	std::vector<double>
@@ -112,7 +126,6 @@ public:
 		std::vector<double> result(out_sums.size());
 		for (int i = 0; i < out_sums.size(); ++i)
 			result[i] = std::exp(out_sums[i] - max) / scale;
-
 		return result;
 	}
 
@@ -161,7 +174,7 @@ public:
 	}
 
 	double
-		accuracy(std::vector<std::vector<double>> &test_data, std::vector<double> weights)
+        accuracy(std::vector<std::vector<double>> &test_data, std::vector<double> weights)
 	{
 		copy_weights(weights);
 
@@ -235,14 +248,14 @@ public:
 		double etaPlus = 1.2; // values are from the paper
 		double etaMinus = 0.5;
 		double deltaMax = 50.0;
-		double deltaMin = 1.0E-6;
+        double deltaMin = 0.000001;
 
 		int epoch = 0;
 		while (epoch < max_epochs)
 		{
-			++epoch;
+            std::cout << "Epoch number: " << ++epoch << std::endl;
 
-			if (epoch % 100 == 0 && epoch != max_epochs)
+            if (epoch % 1000 == 0)
 			{
 				auto currWts = all_weights();
 				double err = sq_mean_err(t_data, currWts);
@@ -336,22 +349,25 @@ public:
 					{
 						delta = all_hin_delta_prev[i][j] * etaPlus; // compute delta
 						if (delta > deltaMax) delta = deltaMax; // keep it in range
-						double tmp = -(all_hin_grad[i][j] / std::abs(all_hin_grad[i][j])) * delta; // determine direction and magnitude
+                        double tmp = -sign(all_hin_grad[i][j]) * delta; // determine direction and magnitude
 						input_hidden_weights[i][j] += tmp; // update weights
+                        std::cout << "ihw: " << i << " " << j << " : " << input_hidden_weights[i][j];
 					}
 					else if (all_hin_grad_prev[i][j] * all_hin_grad[i][j] < 0) // grad changed sign, decrease delta
 					{
 						delta = all_hin_delta_prev[i][j] * etaMinus; // the delta (not used, but saved for later)
 						if (delta < deltaMin) delta = deltaMin; // keep it in range
 						input_hidden_weights[i][j] -= all_hin_delta_prev[i][j]; // revert to previous weight
+                        std::cout << "ihw: " << i << " " << j << " : " << input_hidden_weights[i][j];
 						all_hin_grad[i][j] = 0; // forces next if-then branch, next iteration
 					}
 					else // this happens next iteration after 2nd branch above (just had a change in gradient)
 					{
 						delta = all_hin_delta_prev[i][j]; // no change to delta
 														  // no way should delta be 0 . . . 
-						double tmp = -(all_hin_grad[i][j] / std::abs(all_hin_grad[i][j])) * delta; // determine direction
+                        double tmp = -sign(all_hin_grad[i][j]) * delta; // determine direction
 						input_hidden_weights[i][j] += tmp; // update
+                        std::cout << "ihw: " << i << " " << j << " : " << input_hidden_weights[i][j];
 					}
 					//Console.WriteLine(all_hin_grad_prev[i][j] + " " + all_hin_grad[i][j]); Console.ReadLine();
 
@@ -380,7 +396,6 @@ public:
 				else // this happens next iteration after 2nd branch above (just had a change in gradient)
 				{
 					delta = hid_delta_prev[i]; // no change to delta
-
 					if (delta > deltaMax) delta = deltaMax;
 					else if (delta < deltaMin) delta = deltaMin;
 					// no way should delta be 0 . . . 
@@ -447,7 +462,7 @@ public:
 					output_biases[i] += tmp; // update
 				}
 				out_delta_prev[i] = delta;
-				out_grad_prev[i] = out_grad[i];
+                out_grad_prev[i] = out_grad[i];
 			}
 		} // while
 
