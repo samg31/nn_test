@@ -202,7 +202,7 @@ public:
 	}
 
 	double
-		sq_mean_err(std::vector<std::vector<double>> &data, std::vector<double> weights)
+        sq_mean_err(std::vector<std::vector<double>> &data, std::vector<double> &weights)
 	{
 		std::vector<double> input_vals(num_inputs), target_vals(num_output);
 		double err = 0;
@@ -383,7 +383,7 @@ public:
 				{
 					delta = hid_delta_prev[i] * etaPlus; // compute delta
 					if (delta > deltaMax) delta = deltaMax;
-					double tmp = -(hid_grad[i] / std::abs(hid_grad[i])) * delta; // determine direction
+                    double tmp = -sign(hid_grad[i]) * delta; // determine direction
 					hidden_biases[i] += tmp; // update
 				}
 				else if (hid_grad_prev[i] * hid_grad[i] < 0) // grad changed sign, decrease delta
@@ -399,7 +399,7 @@ public:
 					if (delta > deltaMax) delta = deltaMax;
 					else if (delta < deltaMin) delta = deltaMin;
 					// no way should delta be 0 . . . 
-					double tmp = -(hid_grad[i] / std::abs(hid_grad[i])) * delta; // determine direction
+                    double tmp = -sign(hid_grad[i]) * delta; // determine direction
 					hidden_biases[i] += tmp; // update
 				}
 				hid_delta_prev[i] = delta;
@@ -415,7 +415,7 @@ public:
 					{
 						delta = all_hout_delta_prev[i][j] * etaPlus; // compute delta
 						if (delta > deltaMax) delta = deltaMax;
-						double tmp = -(all_hout_grad[i][j] / std::abs(all_hout_grad[i][j])) * delta; // determine direction
+                        double tmp = -sign(all_hout_grad[i][j]) * delta; // determine direction
 						hidden_output_weights[i][j] += tmp; // update
 					}
 					else if (all_hout_grad_prev[i][j] * all_hout_grad[i][j] < 0) // grad changed sign, decrease delta
@@ -429,7 +429,7 @@ public:
 					{
 						delta = all_hout_delta_prev[i][j]; // no change to delta
 														   // no way should delta be 0 . . . 
-						double tmp = -(all_hout_grad[i][j] / std::abs(all_hout_grad[i][j])) * delta; // determine direction
+                        double tmp = -sign(all_hout_grad[i][j]) * delta; // determine direction
 						hidden_output_weights[i][j] += tmp; // update
 					}
 					all_hout_delta_prev[i][j] = delta; // save delta
@@ -444,7 +444,7 @@ public:
 				{
 					delta = out_delta_prev[i] * etaPlus; // compute delta
 					if (delta > deltaMax) delta = deltaMax;
-					double tmp = -(out_grad[i] / std::abs(out_grad[i])) * delta; // determine direction
+                    double tmp = -sign(out_grad[i]) * delta; // determine direction
 					output_biases[i] += tmp; // update
 				}
 				else if (out_grad_prev[i] * out_grad[i] < 0) // grad changed sign, decrease delta
@@ -458,7 +458,7 @@ public:
 				{
 					delta = out_delta_prev[i]; // no change to delta
 											   // no way should delta be 0 . . . 
-					double tmp = -(hid_grad[i] / std::abs(hid_grad[i])) * delta; // determine direction
+                    double tmp = -sign(hid_grad[i]) * delta; // determine direction
 					output_biases[i] += tmp; // update
 				}
 				out_delta_prev[i] = delta;
