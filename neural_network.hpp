@@ -23,7 +23,7 @@ public:
 		hidden_output_weights(h, std::vector<double>(o, 0.0)),
 		output_biases(o), outputs(o)
 	{
-		double lower_bound = 0.001, upper_bound = 0.01;
+		double lower_bound = 0.0001, upper_bound = 0.001;
 		std::uniform_real_distribution<double> unif(lower_bound, upper_bound);
 		std::default_random_engine re;
 
@@ -122,7 +122,7 @@ public:
 		int maxIdx = 0;
 		double max = v[0];
 
-		for (int i = 0; i < v.size(); ++i)
+		for (int i = 1; i < v.size(); ++i)
 			if (v[i] > max)
 			{
 				max = v[i];
@@ -139,7 +139,7 @@ public:
 
 		for (int i = 0; i < num_hidden; ++i)
 			for (int j = 0; j < num_inputs; ++j)
-				hid_sums[i] = in_vals[j] * input_hidden_weights[j][i];
+				hid_sums[i] += in_vals[j] * input_hidden_weights[j][i];
 
 		for (int i = 0; i < num_hidden; ++i)
 			hid_sums[i] += hidden_biases[i];
