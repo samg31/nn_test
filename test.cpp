@@ -15,7 +15,7 @@ int main()
     for(int i = 0; i < 9; ++i)
     {
       getline(reader, current, ',');
-      input[j][i] = std::stoi(current);
+      input[j][i] = std::stod(current);
     }
     getline(reader, current);
     input[j][9] = std::stod(current);
