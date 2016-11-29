@@ -212,13 +212,13 @@ public:
 			for (int j = 0; j < num_inputs; ++j)
 				input_vals[j] = data[i][j];
 
-			for (int j = 0; j < num_output; ++j)
+            for (int j = num_inputs-1; j < num_output; ++j)
 				target_vals[j] = data[i][j];
 
 			std::vector<double> new_values = compute_values(input_vals);
 
-			for (i = 0; i < new_values.size(); ++i)
-				err += std::pow((new_values[i] - target_vals[i]), 2);
+            for (int q = 0; q < new_values.size(); ++q)
+                err += std::pow((new_values[q] - target_vals[q]), 2);
 		}
 
 		return err / data.size();
@@ -277,7 +277,7 @@ public:
 					xValues[i] = t_data[row][i];
 				for (int i = num_inputs; i < num_output; ++i)
 					tValues[i] = t_data[row][i];
-				compute_values(xValues); // copy xValues in, compute outputs using curr weights (and store outputs internally)
+                compute_values(xValues); // copy xValues in, compute outputs using curr weights (and store outputs internally)
 
 										 // compute the h-o gradient term/component as in regular back-prop
 										 // this term usually is lower case Greek delta but there are too many other deltas below
@@ -351,14 +351,12 @@ public:
 						if (delta > deltaMax) delta = deltaMax; // keep it in range
                         double tmp = -sign(all_hin_grad[i][j]) * delta; // determine direction and magnitude
 						input_hidden_weights[i][j] += tmp; // update weights
-                        std::cout << "ihw: " << i << " " << j << " : " << input_hidden_weights[i][j];
 					}
 					else if (all_hin_grad_prev[i][j] * all_hin_grad[i][j] < 0) // grad changed sign, decrease delta
 					{
 						delta = all_hin_delta_prev[i][j] * etaMinus; // the delta (not used, but saved for later)
 						if (delta < deltaMin) delta = deltaMin; // keep it in range
 						input_hidden_weights[i][j] -= all_hin_delta_prev[i][j]; // revert to previous weight
-                        std::cout << "ihw: " << i << " " << j << " : " << input_hidden_weights[i][j];
 						all_hin_grad[i][j] = 0; // forces next if-then branch, next iteration
 					}
 					else // this happens next iteration after 2nd branch above (just had a change in gradient)
@@ -367,7 +365,6 @@ public:
 														  // no way should delta be 0 . . . 
                         double tmp = -sign(all_hin_grad[i][j]) * delta; // determine direction
 						input_hidden_weights[i][j] += tmp; // update
-                        std::cout << "ihw: " << i << " " << j << " : " << input_hidden_weights[i][j];
 					}
 					//Console.WriteLine(all_hin_grad_prev[i][j] + " " + all_hin_grad[i][j]); Console.ReadLine();
 
