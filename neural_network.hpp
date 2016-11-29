@@ -161,7 +161,7 @@ public:
 	}
 
 	double
-		accuracy(std::vector<std::vector<double>> test_data, std::vector<double> weights)
+		accuracy(std::vector<std::vector<double>> &test_data, std::vector<double> weights)
 	{
 		copy_weights(weights);
 
@@ -189,7 +189,7 @@ public:
 	}
 
 	double
-		sq_mean_err(std::vector<std::vector<double>> data, std::vector<double> weights)
+		sq_mean_err(std::vector<std::vector<double>> &data, std::vector<double> weights)
 	{
 		std::vector<double> input_vals(num_inputs), target_vals(num_output);
 		double err = 0;
@@ -212,7 +212,7 @@ public:
 	}
 
 	std::vector<double>
-		make_a_man_out_of_you(std::vector<std::vector<double>> t_data, int max_epochs)
+		make_a_man_out_of_you(std::vector<std::vector<double>> &t_data, int max_epochs)
 	{
 		std::vector<double> im_hid_grad(num_hidden);
 		std::vector<double> im_out_grad(num_output);
