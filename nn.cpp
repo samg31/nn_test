@@ -26,8 +26,8 @@ vec hidden_biases( num_hidden );
 vec hidden_outputs( num_hidden );
 vec output_biases( num_output );
 
-matrix ihWeights( num_inputs, vec( num_hidden ) );
-matrix ohWeights( num_hidden, vec( num_output ) );
+matrix ihWeights( num_inputs, vec( num_hidden, 0.0 ) );
+matrix ohWeights( num_hidden, vec( num_output, 0.0 ) );
 
 // fill vectors/matrices with a uniform random distribution
 void initialize();
@@ -50,8 +50,6 @@ int main( int argc, char** argv )
     // int num_threads, rank;
     // MPI_Comm_size( MPI_COMM_WORLD, &num_threads );
     // MPI_Comm_rank( MPI_COMM_WORLD, &rank );
-
-    
 
     initialize();
     matrix input( 7018, vec( 10, 0.0 ) );
@@ -256,7 +254,7 @@ vec train( matrix& t_data, int max_epochs )
         {
             ++epoch;
             
-            if (epoch % 100 == 0)
+            if (epoch % 100 == 0 || epoch == 1 )
             {
                 double err = sq_mean_error(t_data);
                 std::cout << "epoch = " << epoch << " err = " << err << std::endl;
@@ -327,7 +325,7 @@ vec train( matrix& t_data, int max_epochs )
                 {
                     for (int j = 0; j < num_hidden; ++j)
                     {
-                        double grad = hGradTerms[j] * inputs[i];
+                        double grad = hGradTerms[j] * xValues[i];
                         ihWeightGradsAcc[i][j] += grad;
                     }
                 }
@@ -350,13 +348,14 @@ vec train( matrix& t_data, int max_epochs )
             {
                 for (int j = 0; j < num_hidden; ++j)
                 {
+		    // std::cout << ihPrevWeightGradsAcc[i][j] << "*" << ihWeightGradsAcc[i][j] << std::endl;
                     if (ihPrevWeightGradsAcc[i][j] * ihWeightGradsAcc[i][j] > 0) // no sign change, increase delta
                     {
                         delta = ihPrevWeightDeltas[i][j] * etaPlus; // compute delta
                         if (delta > deltaMax) delta = deltaMax; // keep it in range
                         double tmp = -sign(ihWeightGradsAcc[i][j]) * delta; // determine direction and magnitude
                         ihWeights[i][j] += tmp; // update weights
-                        std::cout << "did it " << epoch << std::endl;
+                        // std::cout << "did it " << epoch << std::endl;
                     }
                     else if (ihPrevWeightGradsAcc[i][j] * ihWeightGradsAcc[i][j] < 0) // grad changed sign, decrease delta
                     {
@@ -471,5 +470,4 @@ vec train( matrix& t_data, int max_epochs )
         
         auto wts = get_weight();
         return wts;
-
 }
