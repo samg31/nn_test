@@ -5,7 +5,7 @@
 #include <cmath>
 #include <cassert>
 #include <algorithm>
-// #include <mpi.h>
+#include <mpi.h>
 
 using matrix = std::vector<std::vector<double>>;
 using vec = std::vector<double>;
@@ -46,37 +46,59 @@ int max_value_idx( vec v );
 
 int main( int argc, char** argv )
 {
-    // MPI_Init( &argc, &argv );
-    // int num_threads, rank;
-    // MPI_Comm_size( MPI_COMM_WORLD, &num_threads );
-    // MPI_Comm_rank( MPI_COMM_WORLD, &rank );
+    MPI_Init( &argc, &argv );
+    int num_threads, rank;
+    MPI_Comm_size( MPI_COMM_WORLD, &num_threads );
+    MPI_Comm_rank( MPI_COMM_WORLD, &rank );
 
+	if( rank == 0 )
+	{
+	bool converge = false;
+
+	std::cout << "Initializing values... ";
     initialize();
+	std::cout << "Completed." << std::endl;
     matrix input( 7018, vec( 10, 0.0 ) );
 
     std::ifstream reader("training.dat");
     std::string current;
 
+	std::cout << "Reading data... ";
     for(int j = 0; j < input.size(); ++j)
     {
-	for(int i = 0; i < 9; ++i)
-	{
-	    getline(reader, current, ',');
-	    input[j][i] = std::stod(current);
-	}
-	getline(reader, current);
-	input[j][9] = std::stod(current);
+		for(int i = 0; i < 9; ++i)
+		{
+			getline(reader, current, ',');
+			input[j][i] = std::stod(current);
+		}
+		getline(reader, current);
+		input[j][9] = std::stod(current);
     }
 
-    std::cout << "Read" << std::endl;
+    std::cout << "Completed." << std::endl;
 
     int max_epochs = 1000;
+	int num_threads = 12;
+	std::size_t const partition = input.size() / (num_threads - 1);
+	std::vector<matrix> partitioned_input;
+	partitioned_input.reserve( num_threads - 1 );
+	int j = 0;
+	for( int i = 0; i < num_threads - 1; ++i )
+	{
+		matrix temp;
+		for( ; j < partition*(i+1); ++j )
+		{
+			temp.push_back( input[j] );
+		}
+		partitioned_input.push_back( temp );
+	}
+	
     auto weights = train(input, max_epochs);
 
     for(auto v : weights)
 	std::cout << v << std::endl;
-
-    // MPI_Finalize();
+	}
+    MPI_Finalize();
     return 0;
 }
 
