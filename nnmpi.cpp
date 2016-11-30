@@ -13,6 +13,7 @@ using vec = std::vector<double>;
 constexpr int num_inputs = 7;
 constexpr int num_hidden = 9;
 constexpr int num_output = 3;
+constexpr int max_epochs = 1000;
 
 constexpr double lower_bound = 0.0001;
 constexpr double upper_bound = 0.01;
@@ -76,9 +77,6 @@ int main( int argc, char** argv )
 
 		std::cout << "Completed." << std::endl;
 
-		int max_epochs = 1000;
-
-
 		std::cout << "Partitioning data table... ";
 		std::size_t const partition = input.size() / (num_threads - 1);
 		std::vector<matrix> partitioned_input;
@@ -114,7 +112,7 @@ int main( int argc, char** argv )
 		MPI_Gather(&errs.front(), 1, MPI_DOUBLE, &errs.front(), num_threads, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
 		for(int j = 2; j < num_threads; ++j)
-			if(err[j] < err[lowest])
+			if(errs[j] < errs[lowest])
 				lowest = j;
 
 		int chosen = 0;
@@ -155,7 +153,7 @@ int main( int argc, char** argv )
 		MPI_Recv( &chosen, 1, MPI_INT, 0, 2, MPI_COMM_WORLD, MPI_STATUS_IGNORE );
 
 		if(chosen)
-			MPI_Send( &weights.front(), wrights.size(), MPI_DOUBLE, 0, 0, MPI_COMM_WORLD );
+			MPI_Send( &weights.front(), weights.size(), MPI_DOUBLE, 0, 0, MPI_COMM_WORLD );
 
     }
     MPI_Finalize();
