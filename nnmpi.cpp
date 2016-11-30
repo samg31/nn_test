@@ -53,7 +53,6 @@ int main( int argc, char** argv )
 
     if( rank == 0 )
     {
-		bool converge = false;
 
 		std::cout << "Initializing values... ";
 		initialize();
@@ -109,10 +108,37 @@ int main( int argc, char** argv )
 
 		// for(auto v : weights)
 		//     std::cout << v << std::endl;
+		int lowest = 1;
+		vec errs(num_threads);
+
+		MPI_Gather(&errs.front(), 1, MPI_DOUBLE, &errs.front(), num_threads, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+
+		for(int j = 2; j < num_threads; ++j)
+			if(err[j] < err[lowest])
+				lowest = j;
+
+		int chosen = 0;
+
+		for(int j = 1; j < num_threads; ++j)
+			if(j != lowest)
+				MPI_Send( &chosen, 1, MPI_INT, j, 2, MPI_COMM_WORLD );
+
+		++chosen;
+		MPI_Send( &chosen, 1, MPI_INT, lowest, 2, MPI_COMM_WORLD );
+
+		vec final_weights((num_inputs * num_hidden)
+		+ (num_hidden * num_output) + num_hidden + num_output);
+
+		MPI_Recv( &final_weights.front(), final_weights.size(), MPI_DOUBLE, lowest, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE );
+
+		for(auto v : final_weights)
+		     std::cout << v << std::endl;
+
     }
 
     else
     {
+		int chosen = 0;
 		int size;
 		MPI_Recv( &size, 1, MPI_INT, 0, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE );
 		matrix table;
@@ -123,6 +149,13 @@ int main( int argc, char** argv )
 			MPI_Recv( &row.front(), row.size(), MPI_DOUBLE, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE );
 			table.push_back( row );
 		}
+		vec weights = train(table, max_epochs);
+		double err = sq_mean_error(table);
+		MPI_Gather(&err, 1, MPI_DOUBLE, NULL, num_threads, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+		MPI_Recv( &chosen, 1, MPI_INT, 0, 2, MPI_COMM_WORLD, MPI_STATUS_IGNORE );
+
+		if(chosen)
+			MPI_Send( &weights.front(), wrights.size(), MPI_DOUBLE, 0, 0, MPI_COMM_WORLD );
 
     }
     MPI_Finalize();
