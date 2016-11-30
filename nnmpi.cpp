@@ -124,13 +124,36 @@ int main( int argc, char** argv )
 		++chosen;
 		MPI_Send( &chosen, 1, MPI_INT, lowest, 2, MPI_COMM_WORLD );
 
-		vec final_weights((num_inputs * num_hidden)
+		vec result((num_inputs * num_hidden)
 		+ (num_hidden * num_output) + num_hidden + num_output);
 
-		MPI_Recv( &final_weights.front(), final_weights.size(), MPI_DOUBLE, lowest, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE );
+		MPI_Recv( &result.front(), result.size(), MPI_DOUBLE, lowest, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE );
 
-		for(auto v : final_weights)
-		     std::cout << v << std::endl;
+	int offset = ( num_inputs * num_hidden );
+
+    for (int i = 0; i < ihWeights.size(); ++i)
+		for (int j = 0; j < ihWeights[i].size(); ++j)
+			ihWeights[i][j] = result[(i * ihWeights.size()) + j];
+
+    for (int i = 0; i < hidden_biases.size(); ++i)
+		hidden_biases[i] = result[(i * hidden_biases.size())+offset];
+            
+    offset += num_hidden;
+            
+    for (int i = 0; i < ohWeights.size(); ++i)
+		for (int j = 0; j < ohWeights[0].size(); ++j)
+			ohWeights[i][j] = result[(i * ohWeights.size()) + j + offset];
+            
+    offset += (num_hidden * num_output);
+            
+    for (int i = 0; i < output_biases.size(); ++i)
+		 output_biases[i] = result[(i * output_biases.size()) + offset];
+
+		 vec check = {19,16,0,0,5,23,24};
+		 	vec response = compute_values(check);
+			 for(int v = 0; v < 3; ++v)
+			 	std::cout << response[v] << std::endl;
+		     
 
     }
 
