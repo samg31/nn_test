@@ -78,6 +78,9 @@ int main( int argc, char** argv )
 		std::cout << "Completed." << std::endl;
 
 		int max_epochs = 1000;
+
+
+		std::cout << "Partitioning data table... ";
 		std::size_t const partition = input.size() / (num_threads - 1);
 		std::vector<matrix> partitioned_input;
 		partitioned_input.reserve( num_threads - 1 );
@@ -91,7 +94,8 @@ int main( int argc, char** argv )
 			}
 			partitioned_input.push_back( temp );
 		}
-
+		std::cout << "Completed." << std::endl;
+		std::cout << "Sending partitions to slaves... ";
 		for( int i = 0; i < partitioned_input.size(); ++i )
 		{
 			int size = partitioned_input[i].size();
@@ -99,6 +103,7 @@ int main( int argc, char** argv )
 			for( auto& vector  : partitioned_input[i] )
 				MPI_Send( &vector.front(), vector.size(), MPI_DOUBLE, (i+1), 0, MPI_COMM_WORLD );
 		}
+		std::cout << "Completed." << std::endl;
 	
 		// auto weights = train(input, max_epochs);
 
