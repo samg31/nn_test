@@ -107,9 +107,10 @@ int main( int argc, char** argv )
 		// for(auto v : weights)
 		//     std::cout << v << std::endl;
 		int lowest = 1;
-		vec errs(num_threads);
+		vec errs(num_threads, 0);
 
-		MPI_Gather(&errs.front(), 1, MPI_DOUBLE, &errs.front(), num_threads, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+		for(int i = 1; i < num_threads; ++i)
+			MPI_Recv( &errs[i], 1, MPI_DOUBLE, i, 3, MPI_COMM_WORLD, MPI_STATUS_IGNORE );
 
 		for(int j = 2; j < num_threads; ++j)
 			if(errs[j] < errs[lowest])
@@ -128,31 +129,6 @@ int main( int argc, char** argv )
 		+ (num_hidden * num_output) + num_hidden + num_output);
 
 		MPI_Recv( &result.front(), result.size(), MPI_DOUBLE, lowest, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE );
-
-	int offset = ( num_inputs * num_hidden );
-
-    for (int i = 0; i < ihWeights.size(); ++i)
-		for (int j = 0; j < ihWeights[i].size(); ++j)
-			ihWeights[i][j] = result[(i * ihWeights.size()) + j];
-
-    for (int i = 0; i < hidden_biases.size(); ++i)
-		hidden_biases[i] = result[(i * hidden_biases.size())+offset];
-            
-    offset += num_hidden;
-            
-    for (int i = 0; i < ohWeights.size(); ++i)
-		for (int j = 0; j < ohWeights[0].size(); ++j)
-			ohWeights[i][j] = result[(i * ohWeights.size()) + j + offset];
-            
-    offset += (num_hidden * num_output);
-            
-    for (int i = 0; i < output_biases.size(); ++i)
-		 output_biases[i] = result[(i * output_biases.size()) + offset];
-
-		 vec check = {19,16,0,0,5,23,24};
-		 	vec response = compute_values(check);
-			 for(int v = 0; v < 3; ++v)
-			 	std::cout << response[v] << std::endl;
 		     
 
     }
@@ -164,18 +140,20 @@ int main( int argc, char** argv )
 		MPI_Recv( &size, 1, MPI_INT, 0, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE );
 		matrix table;
 		vec row( 10 );
-		table.reserve( size );
+		table.reserve(size);
 		for( int i = 0; i < size; ++i )
 		{
 			MPI_Recv( &row.front(), row.size(), MPI_DOUBLE, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE );
 			table.push_back( row );
 		}
+		std::cout << "Received" <<std::endl;
 		vec weights = train(table, max_epochs);
 		double err = sq_mean_error(table);
-		MPI_Gather(&err, 1, MPI_DOUBLE, NULL, num_threads, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+		MPI_Send(&err, 1, MPI_DOUBLE, 0, 3, MPI_COMM_WORLD);
+std::cout << "sent" << std::endl;
 		MPI_Recv( &chosen, 1, MPI_INT, 0, 2, MPI_COMM_WORLD, MPI_STATUS_IGNORE );
-
-		if(chosen)
+std::cout << "received" << std::endl;
+		if(chosen == 1)
 			MPI_Send( &weights.front(), weights.size(), MPI_DOUBLE, 0, 0, MPI_COMM_WORLD );
 
     }
