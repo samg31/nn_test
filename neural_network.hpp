@@ -314,7 +314,7 @@ public:
                 {
                     for (int j = 0; j < num_hidden; ++j)
                     {
-                        double grad = hGradTerms[j] * inputs[i];
+                        double grad = hGradTerms[j] * xValues[i];
                         ihWeightGradsAcc[i][j] += grad;
                     }
                 }
