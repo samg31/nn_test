@@ -3,7 +3,7 @@
 #include <fstream>
 #include <random>
 #include <cmath>
-#include <cassert>
+#include <chrono>
 #include <algorithm>
 #include <mpi.h>
 
@@ -89,6 +89,7 @@ int main( int argc, char** argv )
 			}
 			partitioned_input.push_back( temp );
 		}
+		auto start = std::chrono::steady_clock::now();
 		std::cout << "Completed." << std::endl;
 		std::cout << "Sending partitions to slaves... ";
 		for( int i = 0; i < partitioned_input.size(); ++i )
@@ -127,7 +128,10 @@ int main( int argc, char** argv )
 		+ (num_hidden * num_output) + num_hidden + num_output);
 
 		MPI_Recv( &result.front(), result.size(), MPI_DOUBLE, lowest, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE );
-		     
+		auto end = std::chrono::steady_clock::now();   
+
+		std::cout << "Time: " << (end - start).count() << std::endl;
+
 	    set_weights(result);
 
 		vec res = compute_values(input[2063]);
