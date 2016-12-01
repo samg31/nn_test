@@ -166,7 +166,7 @@ int main( int argc, char** argv )
 	
     // auto weights = train(input, max_epochs);
 
-	double nn_input[8];
+	double nn_input[7];
 
 	constexpr int frames_per_second = 10;
 	int frame = 0;
@@ -217,17 +217,21 @@ int main( int argc, char** argv )
 		}
 		SDL_BlitSurface( background, NULL, screen, NULL );
 
-		nn_input[0] = ( snek.mCollider.y < food->Collider.y ) ? food->Collider.y - snek.mCollider.y : 0;
-		nn_input[1] = ( snek.mCollider.x < food->Collider.x ) ? food->Collider.x - snek.mCollider.x : 0;
-		nn_input[2] = ( snek.mCollider.y > food->Collider.y ) ? snek.mCollider.y - food->Collider.y : 0;
-		nn_input[3] = ( snek.mCollider.x > food->Collider.x ) ? snek.mCollider.x - food->Collider.x : 0;
-
 		// determine if there is an obstacle to the left of snake's head
 		// this is why you should not write the driver program before the
 		// program that does the actual computation
 
-		if( snek.mDir == WEST )
+		switch( snek.mDir )
 		{
+		case WEST:
+		{
+
+			
+			nn_input[0] = ( snek.mCollider.x > food->Collider.x ) ? -(food->Collider.x - snek.mCollider.x) / 16 : 0;
+			nn_input[1] = ( snek.mCollider.y > food->Collider.y ) ? -(food->Collider.y - snek.mCollider.y) / 16 : 0;
+			nn_input[2] = ( snek.mCollider.x < food->Collider.x ) ? -(snek.mCollider.x - food->Collider.x) / 16 : 0;
+			nn_input[3] = ( snek.mCollider.y < food->Collider.y ) ? -(snek.mCollider.y - food->Collider.y) / 16 : 0;
+			
 			// left obstacle
 			auto l_obst = std::find_if( snek.Snake.begin(), snek.Snake.end(), [&snek](const Node* n)
 										{ return n->mCollider.x == snek.mCollider.x
@@ -309,10 +313,16 @@ int main( int argc, char** argv )
 				{
 					nn_input[6] = 0;
 				}
-			}			
+			}
+			break;
 		}
-		else if( snek.mDir == EAST )
+		case EAST:
 		{
+			nn_input[0] = ( snek.mCollider.x < food->Collider.x ) ? (food->Collider.x - snek.mCollider.x) / 16 : 0;
+			nn_input[1] = ( snek.mCollider.y < food->Collider.y ) ? (food->Collider.y - snek.mCollider.y) / 16 : 0;
+			nn_input[2] = ( snek.mCollider.x > food->Collider.x ) ? (snek.mCollider.x - food->Collider.x) / 16 : 0;
+			nn_input[3] = ( snek.mCollider.y > food->Collider.y ) ? (snek.mCollider.y - food->Collider.y) / 16 : 0;		 
+
 			// left obstacle
 			auto l_obst = std::find_if( snek.Snake.begin(), snek.Snake.end(), [&snek](const Node* n)
 										{ return n->mCollider.x == snek.mCollider.x
@@ -394,10 +404,17 @@ int main( int argc, char** argv )
 				{
 					nn_input[6] = 0;
 				}
-			}			
-		}		
-		else if( snek.mDir == NORTH )
+			}
+			break;
+		}
+		case NORTH:
 		{
+
+			nn_input[0] = ( snek.mCollider.y > food->Collider.y ) ? -(food->Collider.y - snek.mCollider.y) / 16 : 0;
+			nn_input[1] = ( snek.mCollider.x < food->Collider.x ) ? (food->Collider.x - snek.mCollider.x) / 16 : 0;
+			nn_input[2] = ( snek.mCollider.y < food->Collider.y ) ? -(snek.mCollider.y - food->Collider.y) / 16 : 0;
+			nn_input[3] = ( snek.mCollider.x > food->Collider.x ) ? (snek.mCollider.x - food->Collider.x) / 16 : 0;
+			
 			// left obstacle
 			auto l_obst = std::find_if( snek.Snake.begin(), snek.Snake.end(), [&snek](const Node* n)
 										{ return n->mCollider.y == snek.mCollider.y
@@ -452,9 +469,15 @@ int main( int argc, char** argv )
 					nn_input[5] = 0;
 				}
 			}
+			break;
 		}
-		else if( snek.mDir == SOUTH )
+		case SOUTH:
 		{
+			nn_input[0] = ( snek.mCollider.y < food->Collider.y ) ? (food->Collider.y - snek.mCollider.y) / 16 : 0;
+			nn_input[1] = ( snek.mCollider.x > food->Collider.x ) ? (snek.mCollider.x - food->Collider.x) / 16 : 0;
+			nn_input[2] = ( snek.mCollider.y > food->Collider.y ) ? (snek.mCollider.y - food->Collider.y) / 16 : 0;
+			nn_input[3] = ( snek.mCollider.x < food->Collider.x ) ? (food->Collider.x - snek.mCollider.x) / 16 : 0;
+
 			// left obstacle
 			auto l_obst = std::find_if( snek.Snake.begin(), snek.Snake.end(), [&snek](const Node* n)
 										{ return n->mCollider.y == snek.mCollider.y
@@ -537,8 +560,9 @@ int main( int argc, char** argv )
 					nn_input[6] = 0;
 				}
 			}
-		}			
-		
+			break;
+		}
+		}
 		snek.Render( screen );
 
 		for( auto i : walls )
