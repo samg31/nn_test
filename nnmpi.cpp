@@ -27,8 +27,8 @@ vec hidden_biases( num_hidden );
 vec hidden_outputs( num_hidden );
 vec output_biases( num_output );
 
-matrix ihWeights( num_inputs, vec( num_hidden, 0.0 ) );
-matrix ohWeights( num_hidden, vec( num_output, 0.0 ) );
+matrix in_hid_wts( num_inputs, vec( num_hidden, 0.0 ) );
+matrix hid_out_wts( num_hidden, vec( num_output, 0.0 ) );
 
 // fill vectors/matrices with a uniform random distribution
 void initialize();
@@ -40,7 +40,7 @@ int sign( double x );
 double tanh_approx( double x );
 double sq_mean_error( matrix& data  );
 vec train( matrix& t_data, int max_epochs );
-vec get_weight();
+vec serialize_weights();
 void set_weights(vec result);
 vec soft_max( vec out_sums );
 vec compute_values( vec in_vals );
@@ -181,11 +181,11 @@ void initialize()
 
     for( int i = 0; i < num_hidden; ++i )
 	for( int j = 0; j < num_output; ++j )
-	    ohWeights[i][j] = unif(re);
+	    hid_out_wts[i][j] = unif(re);
 
     for( int i = 0; i < num_inputs; ++i )
 	for( int j = 0; j < num_hidden; ++j )
-	    ihWeights[i][j] = unif(re);
+	    in_hid_wts[i][j] = unif(re);
 }
 
 int sign( double x )
@@ -232,7 +232,7 @@ vec compute_values( vec in_vals )
         
     for (int i = 0; i < num_hidden; ++i)
 	for (int j = 0; j < num_inputs; ++j)
-	    hidden_sums[i] += in_vals[j] * ihWeights[j][i];
+	    hidden_sums[i] += in_vals[j] * in_hid_wts[j][i];
         
     for (int i = 0; i < num_hidden; ++i)
 	hidden_sums[i] += hidden_biases[i];
@@ -242,7 +242,7 @@ vec compute_values( vec in_vals )
         
     for (int i = 0; i < num_output; ++i)
 	for (int j = 0; j < num_hidden; ++j)
-	    out_sums[i] += hidden_outputs[j] * ohWeights[j][i];
+	    out_sums[i] += hidden_outputs[j] * hid_out_wts[j][i];
         
     for (int i = 0; i < num_output; ++i)
 	out_sums[i] += output_biases[i];
@@ -272,24 +272,24 @@ vec soft_max( vec out_sums )
 
 }
 
-vec get_weight()
+vec serialize_weights()
 {
     int num_weights = (num_inputs * num_hidden)
 	+ (num_hidden * num_output) + num_hidden + num_output;
     vec result( num_weights );
     int offset = ( num_inputs * num_hidden );
 
-    for (int i = 0; i < ihWeights.size(); ++i)
-	for (int j = 0; j < ihWeights[i].size(); ++j)
-	    result[(i * ihWeights.size()) + j] = ihWeights[i][j];
+    for (int i = 0; i < in_hid_wts.size(); ++i)
+	for (int j = 0; j < in_hid_wts[i].size(); ++j)
+	    result[(i * in_hid_wts.size()) + j] = in_hid_wts[i][j];
     for (int i = 0; i < hidden_biases.size(); ++i)
 	result[(i * hidden_biases.size())+offset] = hidden_biases[i];
             
     offset += num_hidden;
             
-    for (int i = 0; i < ohWeights.size(); ++i)
-	for (int j = 0; j < ohWeights[0].size(); ++j)
-	    result[(i * ohWeights.size()) + j + offset] = ohWeights[i][j];
+    for (int i = 0; i < hid_out_wts.size(); ++i)
+	for (int j = 0; j < hid_out_wts[0].size(); ++j)
+	    result[(i * hid_out_wts.size()) + j + offset] = hid_out_wts[i][j];
             
     offset += (num_hidden * num_output);
             
@@ -305,17 +305,17 @@ void set_weights(vec result)
 
     int offset = ( num_inputs * num_hidden );
 
-    for (int i = 0; i < ihWeights.size(); ++i)
-	for (int j = 0; j < ihWeights[i].size(); ++j)
-	    ihWeights[i][j] = result[(i * ihWeights.size()) + j];
+    for (int i = 0; i < in_hid_wts.size(); ++i)
+	for (int j = 0; j < in_hid_wts[i].size(); ++j)
+	    in_hid_wts[i][j] = result[(i * in_hid_wts.size()) + j];
     for (int i = 0; i < hidden_biases.size(); ++i)
 	    hidden_biases[i] = result[(i * hidden_biases.size())+offset];
             
     offset += num_hidden;
             
-    for (int i = 0; i < ohWeights.size(); ++i)
-	for (int j = 0; j < ohWeights[0].size(); ++j)
-	   ohWeights[i][j] = result[(i * ohWeights.size()) + j + offset];
+    for (int i = 0; i < hid_out_wts.size(); ++i)
+	for (int j = 0; j < hid_out_wts[0].size(); ++j)
+	   hid_out_wts[i][j] = result[(i * hid_out_wts.size()) + j + offset];
             
     offset += (num_hidden * num_output);
             
@@ -344,25 +344,25 @@ vec train( matrix& t_data, int max_epochs )
         std::vector<double> hGradTerms(num_hidden);
         vec oGradTerms(num_output);
         
-        matrix hoWeightGradsAcc(num_hidden, vec(num_output, 0));
-        matrix ihWeightGradsAcc(num_inputs, vec(num_hidden, 0));
-        vec oBiasGradsAcc(num_output);
-        vec hBiasGradsAcc(num_hidden);
+        matrix acc_hid_out_grad(num_hidden, vec(num_output, 0));
+        matrix acc_in_hid_grad(num_inputs, vec(num_hidden, 0));
+        vec out_bias_grads(num_output);
+        vec hid_bias_grads(num_hidden);
         
-        matrix hoPrevWeightGradsAcc(num_hidden, vec(num_output, 0.01));
-        matrix ihPrevWeightGradsAcc(num_inputs, vec(num_hidden, 0.01));
-        vec oPrevBiasGradsAcc(num_output);
-        vec hPrevBiasGradsAcc(num_hidden);
+        matrix prev_acc_hid_out_grad(num_hidden, vec(num_output, 0.01));
+        matrix prev_acc_in_hid_grad(num_inputs, vec(num_hidden, 0.01));
+        vec prev_out_bias_grads(num_output);
+        vec prev_hid_bias_grads(num_hidden);
         
-        matrix hoPrevWeightDeltas(num_hidden, vec(num_output, 0.01));
-        matrix ihPrevWeightDeltas(num_inputs, vec(num_hidden, 0.01));
-        vec oPrevBiasDeltas(num_output, 0.01);
-        vec hPrevBiasDeltas(num_hidden, 0.01);
+        matrix hid_out_wts_deltas(num_hidden, vec(num_output, 0.01));
+        matrix in_hid_wts_deltas(num_inputs, vec(num_hidden, 0.01));
+        vec out_bias_deltas(num_output, 0.01);
+        vec hid_bias_deltas(num_hidden, 0.01);
         
-        double etaPlus = 1.2; // values are from the paper
-        double etaMinus = 0.5;
-        double deltaMax = 50.0;
-        double deltaMin = 0.000001;
+        double increment_amount = 1.2; // values are from the paper
+        double decrement_amount = 0.5;
+        double max_delta = 50.0;
+        double min_delta = 0.000001;
         
         int epoch = 0;
         while (epoch < max_epochs)
@@ -375,214 +375,196 @@ vec train( matrix& t_data, int max_epochs )
                 std::cout << "epoch = " << epoch << " err = " << err << std::endl;
             }
             
-            // 1. compute and accumulate all gradients
-            hoWeightGradsAcc = matrix(num_hidden, vec(num_output, 0)); // zero-out values from prev iteration
-            ihWeightGradsAcc = matrix(num_inputs, vec(num_hidden, 0));
-            oBiasGradsAcc = vec(num_output, 0);
-            hBiasGradsAcc = vec(num_hidden, 0);
+            acc_hid_out_grad = matrix(num_hidden, vec(num_output, 0)); 
+            acc_in_hid_grad = matrix(num_inputs, vec(num_hidden, 0));
+            out_bias_grads = vec(num_output, 0);
+            hid_bias_grads = vec(num_hidden, 0);
             
-            auto xValues = vec(num_inputs); // inputs
-            auto tValues = vec(num_output); // target values
+            auto xValues = vec(num_inputs); 
+            auto tValues = vec(num_output); 
             
-            for (int row = 0; row < t_data.size(); ++row)  // walk thru all training data
+            for (int row = 0; row < t_data.size(); ++row) 
             {
                 for (int i = 0; i < num_inputs; ++i)
                     xValues[i] = t_data[row][i];
                 
                 for (int i = num_inputs; (i - num_inputs) < num_output; ++i)
                     tValues[i-num_inputs] = t_data[row][i];
-                compute_values(xValues); // copy xValues in, compute outputs using curr weights (and store outputs internally)
+                compute_values(xValues); 
                 
-                // compute the h-o gradient term/component as in regular back-prop
-                // this term usually is lower case Greek delta but there are too many other deltas below
                 
                 for (int i = 0; i < num_output; ++i)
                 {
-                    double derivative = (1 - outputs[i]) * outputs[i]; // derivative of softmax = (1 - y) * y (same as log-sigmoid)
-                    oGradTerms[i] = derivative * (outputs[i] - tValues[i]); // careful with O-T vs. T-O, O-T is the most usual
+                    double derivative = (1 - outputs[i]) * outputs[i]; 
+                    oGradTerms[i] = derivative * (outputs[i] - tValues[i]); 
                 }
                 
-                // compute the i-h gradient term/component as in regular back-prop
                 
                 for (int i = 0; i < num_hidden; ++i)
                 {
-                    double derivative = (1 - hidden_outputs[i]) * (1 + hidden_outputs[i]); // derivative of tanh = (1 - y) * (1 + y)
+                    double derivative = (1 - hidden_outputs[i]) * (1 + hidden_outputs[i]); 
                     double sum = 0.0;
-                    for (int j = 0; j < num_output; ++j) // each hidden delta is the sum of num_output terms
+                    for (int j = 0; j < num_output; ++j) 
                     {
-                        double x = oGradTerms[j] * ohWeights[i][j];
+                        double x = oGradTerms[j] * hid_out_wts[i][j];
                         sum += x;
                     }
                     hGradTerms[i] = derivative * sum;
                 }
                 
-                // add input to h-o component to make h-o weight gradients, and accumulate
                 
                 for (int i = 0; i < num_hidden; ++i)
                 {
                     for (int j = 0; j < num_output; ++j)
                     {
                         double grad = oGradTerms[j] * hidden_outputs[i];
-                        hoWeightGradsAcc[i][j] += grad;
+                        acc_hid_out_grad[i][j] += grad;
                     }
                 }
                 
-                // the (hidden-to-) output bias gradients
                 
                 for (int i = 0; i < num_output; ++i)
                 {
-                    oBiasGradsAcc[i] += oGradTerms[i];
+                    out_bias_grads[i] += oGradTerms[i];
                 }
                 
-                // add input term to i-h component to make i-h weight gradients and accumulate
                 
                 for (int i = 0; i < num_inputs; ++i)
                 {
                     for (int j = 0; j < num_hidden; ++j)
                     {
                         double grad = hGradTerms[j] * xValues[i];
-                        ihWeightGradsAcc[i][j] += grad;
+                        acc_in_hid_grad[i][j] += grad;
                     }
                 }
                 
-                // the (input-to-) hidden bias gradient
                 
                 for (int i = 0; i < num_hidden; ++i)
                 {
-                    hBiasGradsAcc[i] += hGradTerms[i];
+                    hid_bias_grads[i] += hGradTerms[i];
                 }
-            } // each row
-            // end compute all gradients
-            
-            // update all weights and biases (in any order)
-            
-            // update input-hidden weights
+            } 
+
             double delta = 0.0;
             
             for (int i = 0; i < num_inputs; ++i)
             {
                 for (int j = 0; j < num_hidden; ++j)
                 {
-		    // std::cout << ihPrevWeightGradsAcc[i][j] << "*" << ihWeightGradsAcc[i][j] << std::endl;
-                    if (ihPrevWeightGradsAcc[i][j] * ihWeightGradsAcc[i][j] > 0) // no sign change, increase delta
+                    if (prev_acc_in_hid_grad[i][j] * acc_in_hid_grad[i][j] > 0) 
                     {
-                        delta = ihPrevWeightDeltas[i][j] * etaPlus; // compute delta
-                        if (delta > deltaMax) delta = deltaMax; // keep it in range
-                        double tmp = -sign(ihWeightGradsAcc[i][j]) * delta; // determine direction and magnitude
-                        ihWeights[i][j] += tmp; // update weights
-                        // std::cout << "did it " << epoch << std::endl;
+                        delta = in_hid_wts_deltas[i][j] * increment_amount; 
+                        if (delta > max_delta) delta = max_delta; 
+                        double tmp = -sign(acc_in_hid_grad[i][j]) * delta;  and magnitude
+                        in_hid_wts[i][j] += tmp;
                     }
-                    else if (ihPrevWeightGradsAcc[i][j] * ihWeightGradsAcc[i][j] < 0) // grad changed sign, decrease delta
+                    else if (prev_acc_in_hid_grad[i][j] * acc_in_hid_grad[i][j] < 0) 
                     {
-                        delta = ihPrevWeightDeltas[i][j] * etaMinus; // the delta (not used, but saved for later)
-                        if (delta < deltaMin) delta = deltaMin; // keep it in range
-                        ihWeights[i][j] -= ihPrevWeightDeltas[i][j]; // revert to previous weight
-                        ihWeightGradsAcc[i][j] = 0; // forces next if-then branch, next iteration
+                        delta = in_hid_wts_deltas[i][j] * decrement_amount; 
+                        if (delta < min_delta) delta = min_delta; 
+                        in_hid_wts[i][j] -= in_hid_wts_deltas[i][j]; 
+                        acc_in_hid_grad[i][j] = 0; 
                     }
-                    else // this happens next iteration after 2nd branch above (just had a change in gradient)
+                    else 
                     {
-                        delta = ihPrevWeightDeltas[i][j]; // no change to delta
-                        // no way should delta be 0 . . .
-                        double tmp = -sign(ihWeightGradsAcc[i][j]) * delta; // determine direction
-                        ihWeights[i][j] += tmp; // update
+                        delta = in_hid_wts_deltas[i][j]; 
+                        double tmp = -sign(acc_in_hid_grad[i][j]) * delta; 
+                        in_hid_wts[i][j] += tmp; 
                     }
-                    //Console.WriteLine(ihPrevWeightGradsAcc[i][j] + " " + ihWeightGradsAcc[i][j]); Console.ReadLine();
                     
-                    ihPrevWeightDeltas[i][j] = delta; // save delta
-                    ihPrevWeightGradsAcc[i][j] = ihWeightGradsAcc[i][j]; // save the (accumulated) gradient
-                } // j
-            } // i
+                    in_hid_wts_deltas[i][j] = delta; 
+                    prev_acc_in_hid_grad[i][j] = acc_in_hid_grad[i][j]; 
+                } 
+            } 
             
-            // update (input-to-) hidden biases
+            
             for (int i = 0; i < num_hidden; ++i)
             {
-                if (hPrevBiasGradsAcc[i] * hBiasGradsAcc[i] > 0) // no sign change, increase delta
+                if (prev_hid_bias_grads[i] * hid_bias_grads[i] > 0) 
                 {
-                    delta = hPrevBiasDeltas[i] * etaPlus; // compute delta
-                    if (delta > deltaMax) delta = deltaMax;
-                    double tmp = -sign(hBiasGradsAcc[i]) * delta; // determine direction
-                    hidden_biases[i] += tmp; // update
+                    delta = hid_bias_deltas[i] * increment_amount; 
+                    if (delta > max_delta) delta = max_delta;
+                    double tmp = -sign(hid_bias_grads[i]) * delta; 
+                    hidden_biases[i] += tmp;
                 }
-                else if (hPrevBiasGradsAcc[i] * hBiasGradsAcc[i] < 0) // grad changed sign, decrease delta
+                else if (prev_hid_bias_grads[i] * hid_bias_grads[i] < 0) 
                 {
-                    delta = hPrevBiasDeltas[i] * etaMinus; // the delta (not used, but saved later)
-                    if (delta < deltaMin) delta = deltaMin;
-                    hidden_biases[i] -= hPrevBiasDeltas[i]; // revert to previous weight
-                    hBiasGradsAcc[i] = 0; // forces next branch, next iteration
+                    delta = hid_bias_deltas[i] * decrement_amount; 
+                    if (delta < min_delta) delta = min_delta;
+                    hidden_biases[i] -= hid_bias_deltas[i]; 
+                    hid_bias_grads[i] = 0; 
                 }
-                else // this happens next iteration after 2nd branch above (just had a change in gradient)
+                else 
                 {
-                    delta = hPrevBiasDeltas[i]; // no change to delta
-                    if (delta > deltaMax) delta = deltaMax;
-                    else if (delta < deltaMin) delta = deltaMin;
-                    // no way should delta be 0 . . .
-                    double tmp = -sign(hBiasGradsAcc[i]) * delta; // determine direction
-                    hidden_biases[i] += tmp; // update
+                    delta = hid_bias_deltas[i]; 
+                    if (delta > max_delta) delta = max_delta;
+                    else if (delta < min_delta) delta = min_delta;
+         
+                    double tmp = -sign(hid_bias_grads[i]) * delta; 
+                    hidden_biases[i] += tmp; 
                 }
-                hPrevBiasDeltas[i] = delta;
-                hPrevBiasGradsAcc[i] = hBiasGradsAcc[i];
+                hid_bias_deltas[i] = delta;
+                prev_hid_bias_grads[i] = hid_bias_grads[i];
             }
             
-            // update hidden-to-output weights
+            
             for (int i = 0; i < num_hidden; ++i)
             {
                 for (int j = 0; j < num_output; ++j)
                 {
-                    if (hoPrevWeightGradsAcc[i][j] * hoWeightGradsAcc[i][j] > 0) // no sign change, increase delta
+                    if (prev_acc_hid_out_grad[i][j] * acc_hid_out_grad[i][j] > 0) 
                     {
-                        delta = hoPrevWeightDeltas[i][j] * etaPlus; // compute delta
-                        if (delta > deltaMax) delta = deltaMax;
-                        double tmp = -sign(hoWeightGradsAcc[i][j]) * delta; // determine direction
-                        ohWeights[i][j] += tmp; // update
+                        delta = hid_out_wts_deltas[i][j] * increment_amount; 
+                        if (delta > max_delta) delta = max_delta;
+                        double tmp = -sign(acc_hid_out_grad[i][j]) * delta; 
+                        hid_out_wts[i][j] += tmp; 
                     }
-                    else if (hoPrevWeightGradsAcc[i][j] * hoWeightGradsAcc[i][j] < 0) // grad changed sign, decrease delta
+                    else if (prev_acc_hid_out_grad[i][j] * acc_hid_out_grad[i][j] < 0) 
                     {
-                        delta = hoPrevWeightDeltas[i][j] * etaMinus; // the delta (not used, but saved later)
-                        if (delta < deltaMin) delta = deltaMin;
-                        ohWeights[i][j] -= hoPrevWeightDeltas[i][j]; // revert to previous weight
-                        hoWeightGradsAcc[i][j] = 0; // forces next branch, next iteration
+                        delta = hid_out_wts_deltas[i][j] * decrement_amount; 
+                        if (delta < min_delta) delta = min_delta;
+                        hid_out_wts[i][j] -= hid_out_wts_deltas[i][j]; 
+                        acc_hid_out_grad[i][j] = 0; 
                     }
-                    else // this happens next iteration after 2nd branch above (just had a change in gradient)
+                    else 
                     {
-                        delta = hoPrevWeightDeltas[i][j]; // no change to delta
-                        // no way should delta be 0 . . .
-                        double tmp = -sign(hoWeightGradsAcc[i][j]) * delta; // determine direction
-                        ohWeights[i][j] += tmp; // update
+                        delta = hid_out_wts_deltas[i][j]; 
+                        double tmp = -sign(acc_hid_out_grad[i][j]) * delta; 
+                        hid_out_wts[i][j] += tmp; 
                     }
-                    hoPrevWeightDeltas[i][j] = delta; // save delta
-                    hoPrevWeightGradsAcc[i][j] = hoWeightGradsAcc[i][j]; // save the (accumulated) gradients
-                } // j
-            } // i
+                    hid_out_wts_deltas[i][j] = delta;
+                    prev_acc_hid_out_grad[i][j] = acc_hid_out_grad[i][j]; 
+                } 
+            } 
             
-            // update (hidden-to-) output biases
+
             for (int i = 0; i < num_output; ++i)
             {
-                if (oPrevBiasGradsAcc[i] * oBiasGradsAcc[i] > 0) // no sign change, increase delta
+                if (prev_out_bias_grads[i] * out_bias_grads[i] > 0)
                 {
-                    delta = oPrevBiasDeltas[i] * etaPlus; // compute delta
-                    if (delta > deltaMax) delta = deltaMax;
-                    double tmp = -sign(oBiasGradsAcc[i]) * delta; // determine direction
-                    output_biases[i] += tmp; // update
+                    delta = out_bias_deltas[i] * increment_amount; 
+                    if (delta > max_delta) delta = max_delta;
+                    double tmp = -sign(out_bias_grads[i]) * delta; 
+                    output_biases[i] += tmp; 
                 }
-                else if (oPrevBiasGradsAcc[i] * oBiasGradsAcc[i] < 0) // grad changed sign, decrease delta
+                else if (prev_out_bias_grads[i] * out_bias_grads[i] < 0) 
                 {
-                    delta = oPrevBiasDeltas[i] * etaMinus; // the delta (not used, but saved later)
-                    if (delta < deltaMin) delta = deltaMin;
-                    output_biases[i] -= oPrevBiasDeltas[i]; // revert to previous weight
-                    oBiasGradsAcc[i] = 0; // forces next branch, next iteration
+                    delta = out_bias_deltas[i] * decrement_amount; 
+                    if (delta < min_delta) delta = min_delta;
+                    output_biases[i] -= out_bias_deltas[i]; 
+                    out_bias_grads[i] = 0; 
                 }
-                else // this happens next iteration after 2nd branch above (just had a change in gradient)
+                else 
                 {
-                    delta = oPrevBiasDeltas[i]; // no change to delta
-                    // no way should delta be 0 . . .
-                    double tmp = -sign(hBiasGradsAcc[i]) * delta; // determine direction
-                    output_biases[i] += tmp; // update
+                    delta = out_bias_deltas[i]; 
+                    double tmp = -sign(hid_bias_grads[i]) * delta; 
+                    output_biases[i] += tmp; 
                 }
-                oPrevBiasDeltas[i] = delta;
-                oPrevBiasGradsAcc[i] = oBiasGradsAcc[i];
+                out_bias_deltas[i] = delta;
+                prev_out_bias_grads[i] = out_bias_grads[i];
             }
-        } // while
+        } 
         
-        auto wts = get_weight();
+        auto wts = serialize_weights();
         return wts;
 }
