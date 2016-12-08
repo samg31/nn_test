@@ -101,32 +101,29 @@ int main( int argc, char** argv )
 		}
 		std::cout << "Completed." << std::endl;
 	
-		// auto weights = train(input, max_epochs);
-
-		// for(auto v : weights)
-		//     std::cout << v << std::endl;
 		int lowest = 1;
 		vec errs(num_threads, 0);
-
+        //Receive the error values from each thread
 		for(int i = 1; i < num_threads; ++i)
 			MPI_Recv( &errs[i], 1, MPI_DOUBLE, i, 3, MPI_COMM_WORLD, MPI_STATUS_IGNORE );
-
+        //Find the lowest error among the processes
 		for(int j = 2; j < num_threads; ++j)
 			if(errs[j] < errs[lowest])
 				lowest = j;
 
 		int chosen = 0;
-
+        //Send the threads that were not chosen the termination signal
 		for(int j = 1; j < num_threads; ++j)
 			if(j != lowest)
 				MPI_Send( &chosen, 1, MPI_INT, j, 2, MPI_COMM_WORLD );
 
 		++chosen;
+        //The winner is sent a signal to send their weights
 		MPI_Send( &chosen, 1, MPI_INT, lowest, 2, MPI_COMM_WORLD );
 
 		vec result((num_inputs * num_hidden)
 		+ (num_hidden * num_output) + num_hidden + num_output);
-
+        //Receive the weights from the best network
 		MPI_Recv( &result.front(), result.size(), MPI_DOUBLE, lowest, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE );
 		auto end = std::chrono::steady_clock::now();   
 
@@ -229,24 +226,24 @@ double sq_mean_error( matrix& data  )
 vec compute_values( vec in_vals )
 {
     vec hidden_sums( num_hidden, 0 ), out_sums( num_output, 0 );
-        
+    //Pass inputs to the hidden layer 
     for (int i = 0; i < num_hidden; ++i)
 	for (int j = 0; j < num_inputs; ++j)
 	    hidden_sums[i] += in_vals[j] * in_hid_wts[j][i];
-        
+     //Sum the results with the hidden biases   
     for (int i = 0; i < num_hidden; ++i)
 	hidden_sums[i] += hidden_biases[i];
-        
+    //Pass the hidden values to the hidden output edges 
     for (int i = 0; i < num_hidden; ++i)
 	hidden_outputs[i] = tanh_approx(hidden_sums[i]);
-        
+    //Send the hidden out weights to the out put
     for (int i = 0; i < num_output; ++i)
 	for (int j = 0; j < num_hidden; ++j)
 	    out_sums[i] += hidden_outputs[j] * hid_out_wts[j][i];
-        
+    //Add the biases
     for (int i = 0; i < num_output; ++i)
 	out_sums[i] += output_biases[i];
-        
+    //Call softmax for the final result
     outputs = soft_max(out_sums);
         
     return outputs;
@@ -341,8 +338,9 @@ int max_value_idx( vec v )
 
 vec train( matrix& t_data, int max_epochs )
 {
-        std::vector<double> hGradTerms(num_hidden);
-        vec oGradTerms(num_output);
+    //Declare vectors and matricies to store propigation data
+        std::vector<double> hid_grad_terms(num_hidden);
+        vec out_grad_terms(num_output);
         
         matrix acc_hid_out_grad(num_hidden, vec(num_output, 0));
         matrix acc_in_hid_grad(num_inputs, vec(num_hidden, 0));
@@ -359,7 +357,10 @@ vec train( matrix& t_data, int max_epochs )
         vec out_bias_deltas(num_output, 0.01);
         vec hid_bias_deltas(num_hidden, 0.01);
         
-        double increment_amount = 1.2; // values are from the paper
+        //These values are based on the original rprop research paper
+        //They specify the amount learning increases or decreases and the 
+        //max and min values of a learning change
+        double increment_amount = 1.2; 
         double decrement_amount = 0.5;
         double max_delta = 50.0;
         double min_delta = 0.000001;
@@ -368,7 +369,7 @@ vec train( matrix& t_data, int max_epochs )
         while (epoch < max_epochs)
         {
             ++epoch;
-            
+            //This prints out the current error value every hundred epochs
             if (epoch % 100 == 0 || epoch == 1 )
             {
                 double err = sq_mean_error(t_data);
@@ -380,6 +381,7 @@ vec train( matrix& t_data, int max_epochs )
             out_bias_grads = vec(num_output, 0);
             hid_bias_grads = vec(num_hidden, 0);
             
+            //xValues will store inputs, and tValues holds the correct outputs
             auto xValues = vec(num_inputs); 
             auto tValues = vec(num_output); 
             
@@ -390,67 +392,80 @@ vec train( matrix& t_data, int max_epochs )
                 
                 for (int i = num_inputs; (i - num_inputs) < num_output; ++i)
                     tValues[i-num_inputs] = t_data[row][i];
+                //Call compute values which will set the global outputs based
+                //On the given inputs
                 compute_values(xValues); 
                 
-                
+                //Find the derivative of the soft max and use that value multiplied
+                //By the difference between the output and the target value
                 for (int i = 0; i < num_output; ++i)
                 {
                     double derivative = (1 - outputs[i]) * outputs[i]; 
-                    oGradTerms[i] = derivative * (outputs[i] - tValues[i]); 
+                    out_grad_terms[i] = derivative * (outputs[i] - tValues[i]); 
                 }
                 
-                
+                //The derivative of tanh is multiplied by the sum 
+                //across the hidden outputs to calculate each of these gradients 
                 for (int i = 0; i < num_hidden; ++i)
                 {
                     double derivative = (1 - hidden_outputs[i]) * (1 + hidden_outputs[i]); 
                     double sum = 0.0;
                     for (int j = 0; j < num_output; ++j) 
                     {
-                        double x = oGradTerms[j] * hid_out_wts[i][j];
+                        double x = out_grad_terms[j] * hid_out_wts[i][j];
                         sum += x;
                     }
-                    hGradTerms[i] = derivative * sum;
+                    hid_grad_terms[i] = derivative * sum;
                 }
                 
-                
+                //Each gradient step is summed into the accumulating matrix here
                 for (int i = 0; i < num_hidden; ++i)
                 {
                     for (int j = 0; j < num_output; ++j)
                     {
-                        double grad = oGradTerms[j] * hidden_outputs[i];
+                        double grad = out_grad_terms[j] * hidden_outputs[i];
                         acc_hid_out_grad[i][j] += grad;
                     }
                 }
                 
-                
+                //accumulate gradient terms into these biases
                 for (int i = 0; i < num_output; ++i)
                 {
-                    out_bias_grads[i] += oGradTerms[i];
+                    out_bias_grads[i] += out_grad_terms[i];
                 }
                 
-                
+                //Another accumulation occurs here
                 for (int i = 0; i < num_inputs; ++i)
                 {
                     for (int j = 0; j < num_hidden; ++j)
                     {
-                        double grad = hGradTerms[j] * xValues[i];
+                        double grad = hid_grad_terms[j] * xValues[i];
                         acc_in_hid_grad[i][j] += grad;
                     }
                 }
                 
-                
+                //Finally the hidden biases are determined from their grad
+                //terms 
                 for (int i = 0; i < num_hidden; ++i)
                 {
-                    hid_bias_grads[i] += hGradTerms[i];
+                    hid_bias_grads[i] += hid_grad_terms[i];
                 }
             } 
 
-            double delta = 0.0;
-            
-            for (int i = 0; i < num_inputs; ++i)
+            double delta = 0.0; //reset the delta to 0
+            //At this point, the weights and biases are updated for the netwrok
+            //The order this happens in does not matter, and they follow a 
+            //similar form
+
+            for (int i = 0; i < num_inputs; ++i) 
             {
                 for (int j = 0; j < num_hidden; ++j)
                 {
+                    //The brances check to see the direction of the gradient change
+                    //If it is in the same direction the learning speed increases,
+                    //If it is in different dirrections the learning speed is reset
+                    //If it does not change then it is forced to change on the 
+                    //next run
                     if (prev_acc_in_hid_grad[i][j] * acc_in_hid_grad[i][j] > 0) 
                     {
                         delta = in_hid_wts_deltas[i][j] * increment_amount; 
@@ -565,6 +580,6 @@ vec train( matrix& t_data, int max_epochs )
             }
         } 
         
-        auto wts = serialize_weights();
+        auto wts = serialize_weights(); //put all weights in a 1 dimensional array
         return wts;
 }
